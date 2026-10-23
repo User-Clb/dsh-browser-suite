@@ -505,3 +505,30 @@ Tool:
 - system 变化不回传全量历史；
 - state 持久化到 web_states；
 - 不再重复上一轮内容。
+
+## 无真实 sessionId 的网页模式
+
+网页 GUI / 未加载 affinity 补丁时，本地端点拿不到 sessionId，只能派生。
+
+旧派生 key：
+
+```text
+system + first message
+```
+
+DSH 每轮会改 system，导致 key 每轮变化，state 永远命中不了，于是每轮都发完整历史。
+
+已改为：
+
+```text
+model + 第一条 user 消息
+```
+
+system 变化不再改变 key。
+
+隔离测试：
+
+- 第 1 轮 system=S1, user=U1 → sessionId=web-9591dd1c4d433a86, fresh=true
+- 第 2 轮 system=S2-changed，同一 U1，新 A1/U2 → 同一个 sessionId, prompt 只有 A1/U2, fresh=false
+
+这样网页对话模式也不会每轮重复全量上下文。
