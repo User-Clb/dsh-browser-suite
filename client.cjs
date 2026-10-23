@@ -1347,7 +1347,7 @@ window.__ModuleLoader__.load({
     				if (text === lastText) return;
     				lastText = text;
     				clearTimeout(idleTimer);
-    				idleTimer = setTimeout(finish, 300);
+    				idleTimer = setTimeout(finish, 2000);
     			};
     			observer = new MutationObserver(consider);
     			observer.observe(document.body, {
@@ -3218,7 +3218,7 @@ window.__ModuleLoader__.load({
 			style: styles.dialog
 		}, h("div", {
 			style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }
-		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", { style: styles.row }, h("span", { style: styles.label }, "启用网页版"), h("input", { type: "checkbox", checked: webActive, disabled: busy || !hostReady, onChange: (event) => toggleWeb(event.target.checked) }), h("span", { style: styles.hint }, webActive ? "已启用：隐藏模型选择，当前对话使用网页版" : "已关闭：显示模型选择")), h("div", { style: styles.row }, h("span", { style: styles.label }, "自动对话源"), h("input", { type: "checkbox", checked: autoActive, disabled: busy || !hostReady || !webActive, onChange: (event) => toggleAutoSource(event.target.checked) }), h("span", { style: styles.hint }, autoActive ? "已开启：自动对话源（独立开关）" : "独立开关；需先启用网页版")), h("div", { style: styles.row }, h("span", { style: styles.hint }, "测试状态：网页版=" + (webActive ? "开" : "关") + "；自动对话源=" + (autoActive ? "开" : "关") + "；模型选择=" + (webActive ? "隐藏" : "显示"))), h("div", {
+		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", { style: styles.row }, h("span", { style: styles.label }, "启用网页版"), h("input", { type: "checkbox", checked: webActive, disabled: busy || !hostReady, onChange: (event) => toggleWeb(event.target.checked) }), h("span", { style: styles.hint }, webActive ? "已启用：隐藏模型选择，当前对话使用网页版" : "已关闭：显示模型选择")), h("div", { style: styles.row }, h("span", { style: styles.label }, "自动对话源"), h("input", { type: "checkbox", checked: autoActive, disabled: busy || !hostReady || !webActive || config.mode !== "standalone", onChange: (event) => toggleAutoSource(event.target.checked) }), h("span", { style: styles.hint }, autoActive ? "已开启：自动对话源（独立浏览器）" : config.mode === "standalone" ? "独立开关；需先启用网页版" : "侧边栏模式仅支持手动桥接；自动对话源需切到独立浏览器")), h("div", { style: styles.row }, h("span", { style: styles.hint }, "测试状态：网页版=" + (webActive ? "开" : "关") + "；自动对话源=" + (autoActive ? "开" : "关") + "；模型选择=" + (webActive ? "隐藏" : "显示"))), h("div", {
 			style: styles.row
 		}, h("span", { style: styles.label }, "运行位置"), h("select", {
 			value: config.mode ?? "sidebar",
