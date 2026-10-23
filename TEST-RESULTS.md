@@ -302,3 +302,53 @@ compat:
   - 真实 sessionId 透传
 
 两个工具都只做 app.asar 字节等长替换，并自动备份。
+
+## 多标签页隔离
+
+DSH 的右侧栏每个会话只挂载一个当前 Browser tab；切换会话时旧 webview 卸载。
+
+插件侧已实现：
+
+- `activeChatViews` 从单例改为 `Map<DSH session, webview>`；
+- `webviews()` 只查询当前 `data-sidebar-right-session` 根；
+- `findChatWebview`、`openChatTab`、`closeChatTab` 都按当前 DSH 会话作用域；
+- 不同 DSH 会话各自拥有独立的网页对话 URL。
+
+实测新会话获得新的 session id：
+
+```text
+session-a2b66b71-1ddb-48c1-be8a-1d9f06f2b052
+-> session-267f99c2-d02d-4c62-a112-0543e214b7b4
+```
+
+DSH 同一时间只显示当前会话的侧边栏，因此验证的是会话级隔离，而不是同一侧边栏内多个 webview 同时可见。
+
+## 主安装已应用补丁
+
+主安装：
+
+```text
+F:\AllSoftware\DeepSeek Harness\resources\app.asar
+```
+
+已应用：
+
+- persistent sidebar partition
+- session affinity gates
+
+备份文件：
+
+```text
+app.asar.bak-1792771483826
+app.asar.bak-affinity-1792771498730
+```
+
+主 profile `web-local` 已增加：
+
+```yaml
+compat:
+  sendSessionAffinityHeaders: true
+  sessionAffinityFormat: openai
+```
+
+当前运行的 DSH 进程仍使用内存中的旧代码；下一次完全重启后加载补丁。
