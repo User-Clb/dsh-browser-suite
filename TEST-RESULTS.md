@@ -461,3 +461,47 @@ Tool:
 ```
 
 不再重发前面的 User/Assistant 历史；网页对话保持连续，DSH 工具结果作为增量进入网页模型。
+
+## 给定会话 session-267f99c2 的问题复盘
+
+该会话日志显示：
+
+1. 第 1、2 轮正常返回文本；
+2. 第 3 轮模型输出 `tool-call` browser_search，DSH 执行成功；
+3. 工具结果返回后，模型没有输出约定的 `tool_call` 代码块，而是输出 DeepSeek 原生 DSML：
+
+```text
+<｜｜DSML｜｜ calls>
+<｜｜DSML｜｜ invoke name="browser_fetch">
+...
+```
+
+4. 本地端点此前只解析 JSON 代码块，所以这段 DSML 被当作普通文本显示。
+
+### 修复
+
+新增 DSML 工具调用解析：
+
+- 解析 `<｜｜DSML｜｜ invoke name="...">`
+- 解析 `<｜｜DSML｜｜ parameter name="...">`
+- 支持参数为 JSON 或扁平键值
+- 与 JSON tool_call 去重合并
+
+隔离测试：同一段 DSML 被解析为：
+
+```json
+{
+  "name": "browser_fetch",
+  "arguments": "{\"url\":\"http://www.nmc.cn/publish/forecast/AGD/guangzhou.html\",\"maxChars\":4000}"
+}
+```
+
+不再是纯文本。
+
+## 工具结果后的上下文
+
+- 工具调用消息保留在 DSH 历史；
+- 下一轮只发送 Tool 结果增量；
+- system 变化不回传全量历史；
+- state 持久化到 web_states；
+- 不再重复上一轮内容。
