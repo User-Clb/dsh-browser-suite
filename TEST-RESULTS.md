@@ -629,3 +629,79 @@ tool_call
 第二次: browser_search {"query":"今天广州天气"}
 DSH 收到真实 tool_calls
 ```
+
+## session-acf03 复盘
+
+工具系统本身是工作的：
+
+- browser_search 执行两次；
+- ask_user_question 执行；
+- skill 加载 office-xlsx；
+- load_workspace_dependencies 执行；
+- write 成功写入脚本；
+- pwsh、job_output、job_kill 都执行。
+
+根本问题不是工具缺失，而是网页模型生成的参数/命令不可靠。
+
+### 1. Windows 路径丢反斜杠
+
+模型把：
+
+```text
+C:\Users\Revision-Extra\.dsh-next\...
+```
+
+写成：
+
+```text
+C:\Users\Revision-Extra.dsh-next\...
+```
+
+于是 Test-Path 返回 False，模型误以为 Python runtime 不存在，继续盲目搜索。
+
+修复：本地端点增加路径修复，把用户名后缺失的 `\` 补回。
+
+### 2. timeoutMs 被写成字符串
+
+模型输出：
+
+```json
+"timeoutMs": "90000"
+```
+
+DSH 要求 number，报：
+
+```text
+"timeoutMs" must be a number
+```
+
+修复：根据 tools schema 自动把数字字符串转换为 number。
+
+### 3. 递归扫描挂起
+
+模型执行：
+
+```text
+Get-ChildItem 'C:\Users\Revision-Extra\.dsh-next' -Depth 1 -Directory ...
+```
+
+命令运行超过 120 秒被转入后台，模型随后 job_output/job_kill，浪费步骤。
+
+修复：prompt 明确禁止递归扫描整个 home；优先 Test-Path / where.exe / 精确 runtime 路径；已转后台的命令不要重复执行。
+
+### 4. 最终 DSML 嵌套损坏
+
+最后输出出现大量重复/嵌套 parameter 标签，严格解析失败，turn 直接结束。
+
+修复：
+
+- 增加容错 DSML 解析；
+- 接受不完整/嵌套标签；
+- 无解析结果时自动重试一次，要求输出合法 tool_call JSON；
+- 仍失败不返回空白工具块。
+
+### 5. 天气搜索后没有 fetch 页面
+
+模型只调用了 browser_search，没有 browser_fetch 天气页面就给出结论。
+
+修复：prompt 要求 weather 在 browser_search 后至少 browser_fetch 一个天气页面并引用。
