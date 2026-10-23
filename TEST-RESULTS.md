@@ -258,3 +258,47 @@ persist:dsh-sidebar-webds
 ```
 
 写入 Cookie 后完全重启隔离桌面，Cookie 仍存在。
+
+## 真实 DSH sessionId 映射
+
+通过：
+
+1. `tools/patch-session-affinity.mjs` 把 pi-ai 的两个 compat gate 从 `withhold` 改为 `offer`；
+2. profile provider 增加：
+
+```yaml
+compat:
+  sendSessionAffinityHeaders: true
+  sessionAffinityFormat: openai
+```
+
+隔离 DSH 实际请求头变为：
+
+```json
+{
+  "session_id": "session-bcf0f1ed-6fe4-4122-8c09-26fcecb2c327",
+  "x-client-request-id": "session-bcf0f1ed-6fe4-4122-8c09-26fcecb2c327",
+  "x-session-affinity": "session-bcf0f1ed-6fe4-4122-8c09-26fcecb2c327"
+}
+```
+
+映射文件真实写入：
+
+```json
+{
+  "session-bcf0f1ed-6fe4-4122-8c09-26fcecb2c327": {
+    "url": "https://chat.deepseek.com/a/chat/s/d0c945b1-5031-4ecb-91c0-3cd633459148"
+  }
+}
+```
+
+不再是历史摘要派生 key。
+
+## 补丁工具
+
+- `tools/patch-sidebar-partition.mjs`
+  - sidebar partition 持久化
+- `tools/patch-session-affinity.mjs`
+  - 真实 sessionId 透传
+
+两个工具都只做 app.asar 字节等长替换，并自动备份。
