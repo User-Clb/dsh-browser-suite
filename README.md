@@ -1,7 +1,8 @@
 # dsh-browser-suite
 
-**DSH 娴忚鍣ㄥ浠?*锛氭妸鏈湴娴忚鍣ㄦ悳绱?鎶撳彇銆佽緭鍏ユ鏈湴/API 鍒囨崲銆佺綉椤电増 DeepSeek 妗ユ帴鍚堝苟鎴愪竴涓?DSH 鎻掍欢銆?
-鏈寘鐢ㄤ簬鏇夸唬浠ヤ笅涓変釜鏃ф彃浠讹細
+**DSH 浏览器套件**：把本地浏览器搜索/抓取、输入框本地/API 切换、网页版 DeepSeek 桥接合并成一个 DSH 插件。
+
+本包用于替代以下三个旧插件：
 
 - `dsh-local-browser-search`
 - `dsh-local-web-control`
@@ -11,36 +12,55 @@
 
 ---
 
-## 鍔熻兘
+## 功能
 
-### 鏈湴娴忚鍣ㄦ悳绱?
-- `browser_search`锛氶€氳繃鏈満 Edge/Chrome 鐨?CDP 鎵ц缃戦〉鎼滅储锛屼笉闇€瑕佹湇鍔＄鎼滅储 API Key銆?- `browser_fetch`锛氭墦寮€鎸囧畾 URL 骞惰繑鍥炴覆鏌撳悗鐨勬鏂囥€?- 鏀寔 Bing銆佺櫨搴︺€佹悳鐙椼€丏uckDuckGo銆丟oogle銆?- 杈撳叆妗嗕腑鐨勩€屾湰鍦版悳绱€嶅紑鍏虫帶鍒舵湰鍦版悳绱?API 鎼滅储浜掓枼銆?- 閰嶇疆鑷姩淇濆瓨鍒?`$DSH_HOME/local-web-control.json`銆?
-### 缃戦〉鐗?DeepSeek 妗ユ帴
+### 本地浏览器搜索
 
-- 绾?DOM 鑷姩鍖栵紝鏃犻渶 DeepSeek API Key銆?- 鏀寔涓ょ杩愯浣嶇疆锛?  - **渚ц竟鏍?Browser tab**锛氫娇鐢?DSH 鍙充晶鏍忔祻瑙堝櫒銆?  - **鐙珛娴忚鍣?*锛氶€氳繃 CDP 椹卞姩鏈満 Edge/Chrome锛屽彲鏃犲ご鎴栨樉绀虹獥鍙ｏ紝鎸佷箙鍖栫櫥褰?profile銆?- 鎵嬪姩妗ユ帴娴佺▼锛氬湪缃戦〉鐗堣璁猴紝鐒跺悗浣跨敤銆屽瓨璁板繂 / 鎵ц / 缁帴銆嶃€?- 閰嶇疆鑷姩淇濆瓨鍒?`$DSH_HOME/dsh_memory/config.json`銆?
-### 鍚堝苟鍚庣殑杈撳叆妗嗙晫闈?
-- 銆屾湰鍦版悳绱€嶅紑鍏筹紙鏉ヨ嚜 `dsh-local-web-control`锛夈€?- 銆岀綉椤电増銆嶉厤缃寜閽紙鏉ヨ嚜 `dsh-webds-bridge`锛夈€?- 浼氳瘽鏍囬鏍忕殑瀛樿蹇?鎵ц/缁帴鎸夐挳銆?- 璁剧疆椤电殑缃戦〉鐗堟ˉ鎺ラ潰鏉裤€?
-## 瀹夎
+- `browser_search`：通过本机 Edge/Chrome 的 CDP 执行网页搜索，不需要服务端搜索 API Key。
+- `browser_fetch`：打开指定 URL 并返回渲染后的正文。
+- 支持 Bing、百度、搜狗、DuckDuckGo、Google。
+- 输入框中的「本地搜索」开关控制本地搜索/API 搜索互斥。
+- 配置自动保存到 `$DSH_HOME/local-web-control.json`。
+
+### 网页版 DeepSeek 桥接
+
+- 纯 DOM 自动化，无需 DeepSeek API Key。
+- 支持两种运行位置：
+  - **侧边栏 Browser tab**：使用 DSH 右侧栏浏览器。
+  - **独立浏览器**：通过 CDP 驱动本机 Edge/Chrome，可无头或显示窗口，持久化登录 profile。
+- 手动桥接流程：在网页版讨论，然后使用「存记忆 / 执行 / 续接」。
+- 配置自动保存到 `$DSH_HOME/dsh_memory/config.json`。
+
+### 合并后的输入框界面
+
+- 「本地搜索」开关（来自 `dsh-local-web-control`）。
+- 「网页版」配置按钮（来自 `dsh-webds-bridge`）。
+- 会话标题栏的存记忆/执行/续接按钮。
+- 设置页的网页版桥接面板。
+
+## 安装
 
 ```bash
 dsh plugin --profile desktop add github:User-Clb/dsh-browser-suite
 ```
 
-鏈湴寮€鍙戯細
+本地开发：
 
 ```bash
 git clone https://github.com/User-Clb/dsh-browser-suite.git
 dsh plugin --profile desktop add link:<absolute-path>/dsh-browser-suite
 ```
 
-瀹夎鍚庝粠鎵樼洏瀹屽叏閫€鍑?DSH 鍐嶅惎鍔ㄣ€?
-## 閰嶇疆璺緞
+安装后从托盘完全退出 DSH 再启动。
 
-- 鏈湴鎼滅储锛歚$DSH_HOME/local-web-control.json`
-- 缃戦〉鐗堟ˉ鎺ワ細`$DSH_HOME/dsh_memory/config.json`
-- 鐙珛娴忚鍣ㄩ粯璁?profile锛歚$DSH_HOME/dsh_webds_browser`
+## 配置路径
 
-## 寮€鍙戞鏌?
+- 本地搜索：`$DSH_HOME/local-web-control.json`
+- 网页版桥接：`$DSH_HOME/dsh_memory/config.json`
+- 独立浏览器默认 profile：`$DSH_HOME/dsh_webds_browser`
+
+## 开发检查
+
 ```bash
 node --check index.js
 node --check client.cjs
@@ -49,19 +69,22 @@ node --check lib/webds/index.js
 node --check lib/webds/standalone.js
 ```
 
-## 鏋舵瀯
+## 架构
 
 ```text
-index.js                 Host 缁勫悎鍏ュ彛锛歝ontrol.apply(ctx) + webds.apply(ctx)
-client.cjs               Client 缁勫悎鍏ュ彛锛氫袱浠借緭鍏ユ UI 涓€璧?apply
-lib/control/             鏈湴娴忚鍣ㄦ悳绱?鎶撳彇 + 鏈湴/API guard
-lib/webds/               缃戦〉鐗?DeepSeek 鎵嬪姩妗ユ帴
-cordis.patch.yml         Host + Client 涓ゆ潯 loader 鏉＄洰
+index.js                 Host 组合入口：control.apply(ctx) + webds.apply(ctx)
+client.cjs               Client 组合入口：两份输入框 UI 一起 apply
+lib/control/             本地浏览器搜索/抓取 + 本地/API guard
+lib/webds/               网页版 DeepSeek 手动桥接
+cordis.patch.yml         Host + Client 两条 loader 条目
 ```
 
-## 宸茬煡杈圭晫
+## 已知边界
 
-- 缃戦〉鐗堟ˉ鎺ヤ緷璧?DeepSeek 椤甸潰 DOM锛岄〉闈㈡敼鐗堟椂闇€瑕佹洿鏂伴€夋嫨鍣ㄣ€?- 鐙珛娴忚鍣ㄩ渶瑕佹湰鏈哄畨瑁?Edge/Chrome锛涢娆＄櫥褰曢渶鍦ㄧ嫭绔嬫祻瑙堝櫒閲屽畬鎴愩€?- 褰撳墠鍚堝苟鐗堟槸**鎵嬪姩妗ユ帴**鐗堟湰锛涜嚜鍔ㄥ璇濇簮/妯″瀷璺敱涓嶅湪鏈悎骞剁増鑼冨洿鍐咃紝閬垮厤褰卞搷 DSH 鏈綋绋冲畾鎬с€?
+- 网页版桥接依赖 DeepSeek 页面 DOM，页面改版时需要更新选择器。
+- 独立浏览器需要本机安装 Edge/Chrome；首次登录需在独立浏览器里完成。
+- 当前合并版是**手动桥接**版本；自动对话源/模型路由不在本合并版范围内，避免影响 DSH 本体稳定性。
+
 ---
 
 ## English summary
@@ -89,9 +112,9 @@ This merged release is **manual bridge only**; the automatic model-source experi
 
 This package merges and rearranges MIT-licensed code from:
 
-- `dsh-local-browser-search` 鈥?local browser search/fetch driver family.
-- `dsh-local-web-control` 鈥?in-composer local/API control and guard.
-- `dsh-webds-bridge` 鈥?web DeepSeek DOM bridge.
+- `dsh-local-browser-search` — local browser search/fetch driver family.
+- `dsh-local-web-control` — in-composer local/API control and guard.
+- `dsh-webds-bridge` — web DeepSeek DOM bridge.
 
 ## License
 
