@@ -137,3 +137,42 @@ SIDEBAR-BRIDGE-OK
 - 用隔离 profile 在真实桌面验证侧边栏桥接、退出登录、多标签页。
 - 若 DSH 侧增加 sessionId header，可切换到真实 sessionId 映射。
 - 主 profile 合并前再跑一次小项目验收。
+
+## 侧边栏持久 partition 真实验证
+
+DSH 原始代码：
+
+```js
+partition = `dsh-sidebar-browser-${randomUUID()}`;
+```
+
+隔离安装中通过 `tools/patch-sidebar-partition.mjs` 字节等长替换为：
+
+```js
+partition = "persist:dsh-sidebar-webds";
+```
+
+隔离桌面窗口中实测：
+
+```json
+{
+  "partition": "persist:dsh-sidebar-webds",
+  "url": "https://chat.deepseek.com/sign_in"
+}
+```
+
+写入测试 Cookie：
+
+```text
+webds_side_test=1
+```
+
+完全退出隔离桌面、重新启动后重新打开侧边栏：
+
+```text
+cookie: ...; webds_side_test=1; ...
+```
+
+Cookie 仍然存在，说明侧边栏登录信息可以跨重启持久化。
+
+补丁工具只改 app.asar 中的 partition 语句，保持文件长度不变，并自动备份。
