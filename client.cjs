@@ -3270,6 +3270,21 @@ window.__ModuleLoader__.load({
     	console.log("[Dsh Webds Bridge] Client plugin loaded");
     	console.log("[webds] build=", BUILD_TAG);
     	const carrier = globalThis.dshDesktop;
+	const persistentBrowser = globalThis.dshDesktop?.browser;
+	if (persistentBrowser && typeof persistentBrowser.acquire === "function" && persistentBrowser.__webdsPersistentPartition !== true) {
+		try {
+			const originalAcquire = persistentBrowser.acquire.bind(persistentBrowser);
+			persistentBrowser.acquire = async (workspace) => {
+				const reservation = await originalAcquire(workspace);
+				const key = String(workspace ?? "default").replace(/[^a-zA-Z0-9_-]/gu, "_") || "default";
+				return { ...reservation, partition: "persist:dsh-webds-" + key };
+			};
+			persistentBrowser.__webdsPersistentPartition = true;
+			console.log("[webds] sidebar browser partition is now persistent");
+		} catch (error) {
+			console.warn("[webds] cannot install persistent sidebar partition:", String(error?.message ?? error));
+		}
+	}
     	if (carrier?.protocolVersion !== 1) console.warn("[webds] no desktop bridge, protocolVersion=", carrier?.protocolVersion);
     	else {
     		const bridge = carrier.browser;
