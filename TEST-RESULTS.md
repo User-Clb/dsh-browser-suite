@@ -720,3 +720,108 @@ Get-ChildItem 'C:\Users\Revision-Extra\.dsh-next' -Depth 1 -Directory ...
 - 不再固定等 30 秒。
 
 仍保留硬超时和文本稳定检查，避免读到半截回复。
+
+## 回复中的 "text 复制 下载"
+
+网页版代码块头部包含语言标签和复制/下载按钮。guestChat 克隆 .ds-markdown 后直接 innerText，会把工具栏文字读进答案。
+
+修复：
+
+- 克隆后先移除 button、role=button、copy/download/toolbar/code-header；
+- 对 pre 的兄弟节点，删除语言标签和工具条；
+- 再执行代码块围栏还原。
+
+因此最终回复只保留代码内容，不再出现：
+
+```text
+text 复制 下载
+```
+
+## Web 对话上下文双保险
+
+### 第一层：本地自统计
+
+每个 DSH session 的 web state 新增：
+
+- webTokens：当前网页对话累计估算 tokens；
+- webGeneration：网页对话代数；
+- webUrl：当前网页对话 URL；
+- webResetReason：迁移原因。
+
+计数：
+
+- 首次完整 prompt；
+- 每轮 delta；
+- 每轮网页回复；
+- 工具结果作为 delta 计数。
+
+阈值：
+
+- 默认 1,000,000 tokens；
+- 90% 触发预压缩；
+- 超过 1,000,000 强制压缩。
+
+### 第二层：网页页面自身报满
+
+识别回复/错误中的：
+
+```text
+上下文已满 / 超出上限 / 对话过长 / context limit / maximum context
+```
+
+命中后：
+
+1. 用当前 DSH 历史生成 checkpoint；
+2. fresh=true 新开网页对话；
+3. 更新 webGeneration/webUrl；
+4. 在回复前显示中文提示；
+5. 重试当前请求。
+
+### 压缩与迁移
+
+压缩 prompt 保留：
+
+- system；
+- 工具说明；
+- 对话头部；
+- 最近尾部；
+- checkpoint 标记。
+
+DSH 自身消息历史不删除；只压缩发送给新网页对话的上下文。
+
+网页池在新对话成功后写回 web_sessions.json，state 同步 webUrl，实现 DSH session → 新 web URL 的迁移。
+
+### 状态接口
+
+`/v1/context` 现在返回：
+
+- webTokens
+- webGeneration
+- webUrl
+- webResetReason
+
+响应头：
+
+- x-webds-web-tokens
+- x-webds-web-generation
+- x-webds-web-reset
+
+### 隔离测试
+
+低阈值测试：
+
+```text
+r1 generation=1 webTokens=470
+r2 generation=2 webTokens=2489
+pool: 第二次 fresh=true
+state webUrl 更新为新 URL
+```
+
+页面报满测试：
+
+```text
+第一次回复：上下文已满，无法继续
+自动新开网页对话
+第二次：RETRY-OK
+回复带中文提示
+```
