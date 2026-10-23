@@ -1401,6 +1401,7 @@ window.__ModuleLoader__.load({
     		let lastText = "";
     		const done = new Promise((resolve) => {
     			let settled = false;
+    			let sawStop = false;
     			const finish = () => {
     				if (settled) return;
     				settled = true;
@@ -1416,11 +1417,14 @@ window.__ModuleLoader__.load({
     				if (!text) return;
     				const isNew = nodes$1.length > before;
     				if (!isNew && text === baselineText) return;
-    				if (text === lastText) return;
+    				if (text === lastText) {
+    					if (sawStop && !stopVisible()) { clearTimeout(idleTimer); idleTimer = setTimeout(finish, 1200); }
+    					return;
+    				}
     				lastText = text;
     				clearTimeout(idleTimer);
-    				if (stopVisible()) { clearTimeout(idleTimer); idleTimer = setTimeout(consider, 500); return; }
-    				idleTimer = setTimeout(finish, 8000);
+    				if (stopVisible()) { sawStop = true; clearTimeout(idleTimer); idleTimer = setTimeout(consider, 400); return; }
+    				idleTimer = setTimeout(finish, sawStop ? 1200 : 4000);
     			};
     			observer = new MutationObserver(consider);
     			observer.observe(document.body, {

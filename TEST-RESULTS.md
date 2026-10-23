@@ -705,3 +705,18 @@ Get-ChildItem 'C:\Users\Revision-Extra\.dsh-next' -Depth 1 -Directory ...
 模型只调用了 browser_search，没有 browser_fetch 天气页面就给出结论。
 
 修复：prompt 要求 weather 在 browser_search 后至少 browser_fetch 一个天气页面并引用。
+
+## 回复完成后的额外等待
+
+根因：guestChat 在最后一次文本变化后固定等待 30 秒，用来防止流式截断。
+
+现象：网页已经回答完毕，DSH 还要再等很久。
+
+修复：
+
+- 检测到停止按钮时，每 400ms 检查一次；
+- 停止按钮消失后 1.2 秒结束；
+- 从未看到停止按钮时，最多 4 秒稳定后结束；
+- 不再固定等 30 秒。
+
+仍保留硬超时和文本稳定检查，避免读到半截回复。
