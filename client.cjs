@@ -1347,7 +1347,8 @@ window.__ModuleLoader__.load({
     				if (text === lastText) return;
     				lastText = text;
     				clearTimeout(idleTimer);
-    				idleTimer = setTimeout(finish, 2000);
+    				if (stopVisible()) { clearTimeout(idleTimer); idleTimer = setTimeout(consider, 500); return; }
+    				idleTimer = setTimeout(finish, 8000);
     			};
     			observer = new MutationObserver(consider);
     			observer.observe(document.body, {
