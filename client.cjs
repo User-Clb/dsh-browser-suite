@@ -1356,7 +1356,7 @@ window.__ModuleLoader__.load({
     				subtree: true,
     				characterData: true
     			});
-    			hardTimer = setTimeout(finish, 12e4);
+    			hardTimer = setTimeout(finish, 6e5);
     			setTimeout(consider, 0);
     		});
     		await done;
@@ -2965,8 +2965,15 @@ window.__ModuleLoader__.load({
     				if (info && info.browser) setConfig(info.browser);
     				setStatus(await deps.status());
     				setSidebar(deps.sidebarStatus());
-    				setWebActive(deps.isWebActive(deps.getSessionId()));
-    				setAutoActive(deps.isAutoSource(deps.getSessionId()));
+    				const sessionId = deps.getSessionId();
+    				const seat = deps.readModelSeat();
+    				const modelIsWeb = seat?.provider === "web-local";
+    				setWebActive(deps.isWebActive(sessionId) || modelIsWeb);
+    				setAutoActive(deps.isAutoSource(sessionId) || modelIsWeb);
+    				if (modelIsWeb) {
+    					deps.setSessionWebActive(sessionId, true);
+    					deps.setSessionAutoSource(sessionId, true);
+    				}
     				setError(ready ? "" : "Host 端仍是旧版本：请从托盘完全退出 DSH 再重新打开（Ctrl+R 只刷新页面，不够）");
     			} catch (reason) {
     				setHostReady(false);
@@ -3484,7 +3491,7 @@ window.__ModuleLoader__.load({
     	};
     	const styleElement = document.createElement("style");
     	styleElement.id = "webds-web-source-css";
-    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}.webds-web-active button[aria-haspopup='menu']:has([data-provider-id][data-model-id]){display:none!important}";
+    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}.webds-web-active button[aria-haspopup='menu']:has([data-provider-id][data-model-id]){display:none!important}[data-provider-id='web-local']{display:none!important}";
     	if (!document.getElementById(styleElement.id)) document.head.append(styleElement);
     	syncWebClasses();
     	let syncTimer;
