@@ -661,9 +661,52 @@ window.__ModuleLoader__.load({
     	};
     	return browserConfig;
     }
+
+    const OVERLAY_GUARD_SOURCE = String.raw`(() => {
+      if (window.__webdsOverlayGuard) return true;
+      const MARKERS = /使用环境异常|建议您使用我们的官方产品|unusual (environment|activity)/i;
+      const CLOSE = /关闭|取消|Close|Dismiss|确定|知道了/i;
+      const closeBlockingOverlay = () => {
+        const candidates = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"], [class*="Modal"], [class*="dialog"], [class*="Dialog"]'));
+        for (const element of candidates) {
+          const text = String(element.textContent || '');
+          if (!MARKERS.test(text)) continue;
+          const buttons = Array.from(element.querySelectorAll('button'));
+          const close = buttons.find((button) => CLOSE.test((button.getAttribute('aria-label') || '') + ' ' + (button.textContent || ''))) || buttons[0];
+          if (close) {
+            close.click();
+            return true;
+          }
+          try { element.style.display = 'none'; } catch {}
+          return true;
+        }
+        return false;
+      };
+      closeBlockingOverlay();
+      const observer = new MutationObserver(() => { closeBlockingOverlay(); });
+      observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+      window.__webdsOverlayGuard = observer;
+      return true;
+    })()`;
+    const guardedChatViews = new WeakSet();
+    function ensureOverlayGuard(view) {
+      if (!view || guardedChatViews.has(view)) return;
+      guardedChatViews.add(view);
+      try {
+        const result = view.executeJavaScript?.(OVERLAY_GUARD_SOURCE);
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } catch {}
+    }
     const WEBVIEW_SELECTOR = "webview[data-sidebar-browser-frame]";
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     /** 当前页面里所有侧栏浏览器 webview。 */
+    function dismissSidebarRestore() {
+    	const root = sidebarSessionRoot() ?? document;
+    	const button = Array.from(root.querySelectorAll("button")).find((element) => String(element.innerText || "").trim() === "恢复页面");
+    	if (!button) return false;
+    	button.click();
+    	return true;
+    }
     function sidebarSessionRoot() {
     	const roots = Array.from(document.querySelectorAll("[data-sidebar-right-session]"));
     	return roots.find((element) => element.hasAttribute("data-sidebar-right-open")) ?? roots[0];
@@ -703,6 +746,7 @@ window.__ModuleLoader__.load({
     }
     function rememberChatView(view) {
     	activeChatViews.set(currentSessionKey(view), view);
+    	ensureOverlayGuard(view);
     	return view;
     }
     function getActiveChatView() {
@@ -861,7 +905,27 @@ window.__ModuleLoader__.load({
     	throw new Error("找不到 Browser tab 的关闭按钮；请直接在侧边栏标签上点关闭");
     }
 
+    function cleanupSidebarChatTabs(ctx) {
+    	const sidebar = ctx?.get?.("sidebarRight") ?? ctx?.sidebarRight;
+    	const root = sidebarSessionRoot() ?? document;
+    	const tabs = Array.from(root.querySelectorAll('[data-dockkit-tab]'));
+    	const chatTabs = tabs.filter((tab) => /DeepSeek/i.test(String(tab.innerText || "")));
+    	if (chatTabs.length <= 1) return { closed: [] };
+    	const keep = chatTabs.find((tab) => tab.getAttribute('aria-selected') === 'true') ?? chatTabs[chatTabs.length - 1];
+    	const closed = [];
+    	for (const tab of chatTabs) {
+    		if (tab === keep) continue;
+    		const tabId = tab.getAttribute('data-dockkit-tab') ?? '';
+    		if (tabId && sidebar && typeof sidebar.close === "function") {
+    			try { sidebar.close(tabId); closed.push(tabId); continue; } catch {}
+    		}
+    		const closeButton = tab.querySelector('button[aria-label*="关闭"], button[aria-label*="Close"], [data-dockkit-tab-close]');
+    		if (closeButton) { closeButton.click(); closed.push(tabId); }
+    	}
+    	return { closed };
+    }
     async function openChatTab(ctx, url = CHAT_URL, options = {}) {
+    	try { cleanupSidebarChatTabs(ctx); } catch {}
     	const cached = await resolveActiveView();
     	if (cached) {
     		console.log("[webds] 复用当前活动 webview:", JSON.stringify(describeView(cached)));
@@ -3667,6 +3731,10 @@ window.__ModuleLoader__.load({
     		}
     	}, "webds-bridge: composer config");
     	console.log("[webds] conversation.input.right 配置按钮已注册");
+    	ctx.effect(() => {
+    		const timer = setInterval(() => { try { dismissSidebarRestore(); } catch {} }, 1500);
+    		return () => clearInterval(timer);
+    	}, "webds sidebar restore placeholder");
     	ctx.effect(() => {
     		let busy = false;
     		const timer = setInterval(async () => {
