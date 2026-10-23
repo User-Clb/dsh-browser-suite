@@ -176,3 +176,85 @@ cookie: ...; webds_side_test=1; ...
 Cookie 仍然存在，说明侧边栏登录信息可以跨重启持久化。
 
 补丁工具只改 app.asar 中的 partition 语句，保持文件长度不变，并自动备份。
+
+## 侧边栏自动对话源真实端到端
+
+隔离桌面（patched persistent partition）中：
+
+1. 侧边栏打开并登录 DeepSeek；
+2. 打开网页版 + 自动对话源；
+3. 输入：
+
+```text
+请只回复：SIDEBAR-AUTO-OK
+```
+
+结果：
+
+```text
+已完成，用时 17 秒
+SIDEBAR-AUTO-OK
+```
+
+侧边栏标题变为：
+
+```text
+Sidebar auto OK - DeepSeek
+```
+
+### 侧边栏自动对话源工具调用
+
+输入：
+
+```text
+请真实调用 pwsh 工具，一条命令完成：创建目录
+G:\laboratory\sidebar-auto-project，写入 hello.txt 内容 SIDEBAR-TOOL-OK，
+然后读取并回复文件内容。
+```
+
+结果：
+
+```text
+2 轮 4 步
+已完成
+已通过 pwsh 实际执行完成
+```
+
+文件内容：
+
+```text
+SIDEBAR-TOOL-OK
+```
+
+会话 provider 检查：
+
+```text
+providers=web-local
+toolResults=2
+```
+
+说明侧边栏自动对话源真实使用网页版并执行了 DSH 工具，没有回退 API。
+
+### 退出登录
+
+点击“退出登录”后：
+
+```text
+已退出登录并清理本地存储；请重新登录
+```
+
+侧边栏 webview 跳转到：
+
+```text
+https://chat.deepseek.com/sign_in
+```
+
+### 持久登录
+
+侧边栏 partition：
+
+```text
+persist:dsh-sidebar-webds
+```
+
+写入 Cookie 后完全重启隔离桌面，Cookie 仍存在。
