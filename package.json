@@ -1,6 +1,6 @@
 {
   "name": "dsh-browser-suite",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH 浏览器套件：本地搜索与抓取、输入框本地/API 切换、网页版 DeepSeek 桥接与自动对话源。",
   "license": "MIT",
   "repository": {

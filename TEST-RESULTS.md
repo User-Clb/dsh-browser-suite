@@ -825,3 +825,32 @@ state webUrl 更新为新 URL
 第二次：RETRY-OK
 回复带中文提示
 ```
+
+## 语义检查点：降低上下文脱离
+
+确定性 head/tail 压缩会丢弃中间细节，存在上下文脱离风险。
+
+新增语义检查点：
+
+1. 触发压缩时，先在当前网页对话中请求一个结构化摘要；
+2. 要求保留：
+   - 用户目标/约束；
+   - 已做决定；
+   - 已完成动作；
+   - 文件路径、命令、URL、数值、工具结果；
+   - 未完成任务和错误；
+3. 摘要最多 6000 字符；
+4. 新网页对话 = 摘要 + system/工具 + 头尾 checkpoint + 当前请求；
+5. 摘要失败时回退确定性 head/tail。
+
+测试：
+
+```text
+normal fresh=true
+summary fresh=false
+normal fresh=true（新网页对话）
+state webGeneration=2
+state webUrl 更新为新 URL
+```
+
+DSH 完整 messages 始终保留，摘要只影响发送给网页版的上下文。
