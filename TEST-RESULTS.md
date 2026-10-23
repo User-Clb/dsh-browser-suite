@@ -568,3 +568,26 @@ system 变化不再改变 key。
 - 禁止用 IP 定位或记忆代替；
 - 每轮 delta 重申可用工具；
 - 工具结果后继续任务。
+
+## 工具清单只在会话开始发送一次
+
+为避免每轮重复工具 schema 消耗上下文：
+
+- 工具清单只在首次请求 / 新开网页对话时发送；
+- 明确告诉模型“工具清单在整个对话内持续有效，不要索要或重复”；
+- 后续 delta 只包含：
+
+```text
+Assistant: ...
+User: ...
+Tool: ...
+```
+
+验证：
+
+```text
+fullHasTools true
+delta "Assistant:\nA1\n\nUser:\nU2"
+```
+
+delta 中不再带 browser_search/browser_fetch 等工具清单。
