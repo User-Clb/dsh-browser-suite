@@ -3412,7 +3412,10 @@ window.__ModuleLoader__.load({
     		}
     		for (const seat of document.querySelectorAll("[data-provider-id][data-model-id]")) {
     			const id = String(seat.closest?.("[data-conversation-session]")?.getAttribute?.("data-conversation-session") ?? current);
-    			seat.style.display = active.has(id) ? "none" : "";
+    			const hide = active.has(id);
+    			seat.style.display = hide ? "none" : "";
+    			const trigger = seat.closest?.('button[aria-haspopup="menu"]') ?? seat.closest?.("button") ?? seat.parentElement;
+    			if (trigger) trigger.style.display = hide ? "none" : "";
     		}
     	};
     	const readModelSeat = () => {
@@ -3446,7 +3449,7 @@ window.__ModuleLoader__.load({
     	};
     	const styleElement = document.createElement("style");
     	styleElement.id = "webds-web-source-css";
-    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}";
+    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}.webds-web-active button[aria-haspopup='menu']:has([data-provider-id][data-model-id]){display:none!important}";
     	if (!document.getElementById(styleElement.id)) document.head.append(styleElement);
     	syncWebClasses();
     	let syncTimer;
