@@ -53,6 +53,23 @@ dsh plugin --profile desktop add link:<absolute-path>/dsh-browser-suite
 
 安装后从托盘完全退出 DSH 再启动。
 
+## 自动对话源
+
+自动对话源通过本地 OpenAI 兼容端点接入 DSH：
+
+- 端点：`http://127.0.0.1:34567/v1`
+- provider：`web-local`
+- 模型：`web-local/web-deepseek`
+- 每个 DSH 对话/子会话使用独立网页会话；
+- 上下文默认上限 1,000,000 tokens，超出后压缩并新开对话续接；
+- 网页版实际生成按账号串行，避免多标签同时生成互相踢掉；
+- 开源版需要在 profile patch 的 `llm-pi-ai.providers` 中配置 `web-local`，至少包含 `baseURL`、`Authorization` header 和 `contextWindow: 1000000`。
+
+输入框「网页版」面板里：
+
+- **启用网页版**：隐藏模型选择并启用网页版桥接；
+- **自动对话源**：独立开关，选中 Web DeepSeek，自动多轮。
+
 ## 配置路径
 
 - 本地搜索：`$DSH_HOME/local-web-control.json`
@@ -75,7 +92,7 @@ node --check lib/webds/standalone.js
 index.js                 Host 组合入口：control.apply(ctx) + webds.apply(ctx)
 client.cjs               Client 组合入口：两份输入框 UI 一起 apply
 lib/control/             本地浏览器搜索/抓取 + 本地/API guard
-lib/webds/               网页版 DeepSeek 手动桥接
+lib/webds/               网页版 DeepSeek 桥接 + 自动对话源/本地 OpenAI 端点
 cordis.patch.yml         Host + Client 两条 loader 条目
 ```
 
@@ -83,7 +100,9 @@ cordis.patch.yml         Host + Client 两条 loader 条目
 
 - 网页版桥接依赖 DeepSeek 页面 DOM，页面改版时需要更新选择器。
 - 独立浏览器需要本机安装 Edge/Chrome；首次登录需在独立浏览器里完成。
-- 当前合并版是**手动桥接**版本；自动对话源/模型路由不在本合并版范围内，避免影响 DSH 本体稳定性。
+- 自动对话源的单账号实际生成串行；真正 3 路并行需要多个已登录账号/profile。
+- 上下文压缩目前保留头尾、截断中间；语义摘要可作为后续增强。
+- 自动对话源依赖本地 `34567` 端口和 profile patch 中的 `web-local` provider；只装插件不会自动添加该 provider。
 
 ---
 
@@ -93,20 +112,22 @@ cordis.patch.yml         Host + Client 两条 loader 条目
 
 - local Edge/Chrome web search and fetch (`browser_search` / `browser_fetch`);
 - the composer's local-vs-API search switch and guard;
-- the DOM-automated web DeepSeek manual bridge (sidebar or standalone browser).
+- the DOM-automated web DeepSeek manual bridge (sidebar or standalone browser);
+- an optional automatic web DeepSeek model source through a local OpenAI-compatible endpoint (`web-local/web-deepseek`).
+
+Config:
+
+- local search: `$DSH_HOME/local-web-control.json`
+- web bridge: `$DSH_HOME/dsh_memory/config.json`
+- automatic source: add a `web-local` provider in the profile patch (`http://127.0.0.1:34567/v1`, 1M context).
+
+The automatic source keeps one web conversation per DSH session, serializes generation per account, and compacts at the configured context limit before starting a new web conversation.
 
 Install:
 
 ```bash
 dsh plugin --profile desktop add github:User-Clb/dsh-browser-suite
 ```
-
-Config:
-
-- local search: `$DSH_HOME/local-web-control.json`
-- web bridge: `$DSH_HOME/dsh_memory/config.json`
-
-This merged release is **manual bridge only**; the automatic model-source experiment is intentionally excluded to keep the DSH host stable.
 
 ## Credits
 
