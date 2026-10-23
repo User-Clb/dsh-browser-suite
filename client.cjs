@@ -825,7 +825,7 @@ window.__ModuleLoader__.load({
     * @param options - reuseOnly 时不会新建 tab。
     
     */
-﻿    /**
+    /**
      * 关闭当前 DeepSeek Browser tab（侧边栏模式）。
      * 优先使用 sidebarRight.close(tabId)；拿不到 tabId 时点击 tab 上的关闭按钮兜底。
      */
@@ -3050,7 +3050,7 @@ window.__ModuleLoader__.load({
 				setBusy(false);
 			}
 		};
-﻿		const closeSidebar = async () => {
+		const closeSidebar = async () => {
 			setBusy(true);
 			try {
 				await deps.closeSidebar();
@@ -3063,19 +3063,40 @@ window.__ModuleLoader__.load({
 				setBusy(false);
 			}
 		};
-﻿		const toggleWeb = async (next) => {
+		const autoPreviousKey = (sessionId) => "webds.autoPreviousModel." + sessionId;
+		const rememberApiModel = (sessionId) => {
+			const seat = deps.readModelSeat();
+			if (seat && seat.provider !== "web-deepseek") {
+				try { localStorage.setItem(autoPreviousKey(sessionId), JSON.stringify(seat)); } catch {}
+			}
+		};
+		const restoreApiModel = async (sessionId) => {
+			let previous;
+			try { previous = JSON.parse(localStorage.getItem(autoPreviousKey(sessionId)) || "null"); } catch {}
+			if (!previous || previous.provider === "web-deepseek") previous = { provider: "deepseek-account", model: "deepseek-flash" };
+			await deps.selectModel({ sessionId, provider: previous.provider, model: previous.model });
+		};
+		const toggleWeb = async (next) => {
 			const sessionId = deps.getSessionId();
 			if (!sessionId) {
 				setError("无法确定当前对话 ID，无法切换网页版");
 				return;
 			}
-			deps.setSessionWebActive(sessionId, next);
-			setWebActive(next);
-			if (!next) {
-				deps.setSessionAutoSource(sessionId, false);
-				setAutoActive(false);
-			}
+			setBusy(true);
 			setError("");
+			try {
+				if (!next && autoActive) {
+					await restoreApiModel(sessionId);
+					deps.setSessionAutoSource(sessionId, false);
+					setAutoActive(false);
+				}
+				deps.setSessionWebActive(sessionId, next);
+				setWebActive(next);
+			} catch (reason) {
+				setError(String(reason?.message ?? reason));
+			} finally {
+				setBusy(false);
+			}
 		};
 		const toggleAutoSource = async (next) => {
 			const sessionId = deps.getSessionId();
@@ -3088,9 +3109,22 @@ window.__ModuleLoader__.load({
 				setAutoActive(false);
 				return;
 			}
-			deps.setSessionAutoSource(sessionId, next);
-			setAutoActive(next);
+			setBusy(true);
 			setError("");
+			try {
+				if (next) {
+					rememberApiModel(sessionId);
+					await deps.selectModel({ sessionId, provider: "web-deepseek", model: "web-deepseek" });
+				} else {
+					await restoreApiModel(sessionId);
+				}
+				deps.setSessionAutoSource(sessionId, next);
+				setAutoActive(next);
+			} catch (reason) {
+				setError(String(reason?.message ?? reason));
+			} finally {
+				setBusy(false);
+			}
 		};
 		const runBridgeTest = async () => {
 			setBusy(true);
@@ -3379,7 +3413,7 @@ window.__ModuleLoader__.load({
     			localStorage.setItem(WEB_ACTIVE_KEY, JSON.stringify([...set]));
     		} catch {}
     	};
-﻿    	const WEB_AUTO_KEY = "webds.autoSourceSessions";
+    	const WEB_AUTO_KEY = "webds.autoSourceSessions";
     	const readAutoSessions = () => {
     		try {
     			const parsed = JSON.parse(localStorage.getItem(WEB_AUTO_KEY) || "[]");
