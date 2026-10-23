@@ -3732,7 +3732,7 @@ window.__ModuleLoader__.load({
     	}, "webds-bridge: composer config");
     	console.log("[webds] conversation.input.right 配置按钮已注册");
     	ctx.effect(() => {
-    		const timer = setInterval(() => { try { dismissSidebarRestore(); } catch {} }, 1500);
+    		const timer = setInterval(() => { try { dismissSidebarRestore(); } catch {} try { cleanupSidebarChatTabs(ctx); } catch {} }, 1500);
     		return () => clearInterval(timer);
     	}, "webds sidebar restore placeholder");
     	ctx.effect(() => {

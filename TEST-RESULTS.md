@@ -352,3 +352,73 @@ compat:
 ```
 
 当前运行的 DSH 进程仍使用内存中的旧代码；下一次完全重启后加载补丁。
+
+## 侧边栏登录跨重启持久化
+
+DeepSeek 的 `ds_session_id` 是 session cookie，persistent partition 单独不能保存。
+
+新增补丁：
+
+```text
+tools/patch-sidebar-cookie-persistence.mjs
+```
+
+它给 DSH 侧边栏 session 增加 `cookies.on("changed")` 监听，把新的 session cookie 改写成 30 天有效期。
+
+隔离桌面上：
+
+1. 导入 DeepSeek 登录 Cookie 和 localStorage；
+2. 完全退出隔离桌面；
+3. 重新启动，侧边栏直接打开：
+
+```text
+https://chat.deepseek.com/
+```
+
+页面显示：
+
+```text
+欢迎回来，随时开始吧
+```
+
+`userToken` 仍存在，不需要重新登录。
+
+## 恢复占位和标签页清理
+
+新增：
+
+- 自动点击“恢复页面”占位；
+- 自动清理当前会话重复的 DeepSeek 标签页，只保留一个。
+
+隔离桌面启动后原本 4 个 DeepSeek 标签页：
+
+```text
+DeepSeek - 探索未至之境
+DeepSeek - 探索未至之境
+DeepSeek
+DeepSeek - 探索未至之境
+```
+
+自动清理后只保留一个活动标签页，webview 仍为：
+
+```text
+https://chat.deepseek.com/
+```
+
+## 主安装
+
+主安装 `app.asar` 已应用：
+
+- persistent partition；
+- session affinity；
+- sidebar session cookie persistence。
+
+主侧边栏 partition 已从已登录的隔离 partition 播种，下一次启动主 DSH 应直接是登录状态。
+
+主 profile 已包含：
+
+```yaml
+compat:
+  sendSessionAffinityHeaders: true
+  sessionAffinityFormat: openai
+```
