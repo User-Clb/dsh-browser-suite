@@ -422,3 +422,42 @@ compat:
   sendSessionAffinityHeaders: true
   sessionAffinityFormat: openai
 ```
+
+## 提示词重复问题修复
+
+根因：DSH 每轮都会更新 system 消息（时间/上下文），旧逻辑用包含 system 的消息做前缀比较，system 一变前缀就变成 0，随后把整段历史再次发进同一个网页对话，造成上一轮内容重复。
+
+修复：
+
+- 前缀比较只使用非 system 消息；
+- system 变化不再触发全量重发；
+- 只有历史真正被改写（非 system 前缀对不上）时才新开网页对话；
+- 每个 session 的 messages 持久化到：
+
+```text
+$DSH_HOME/dsh_memory/web_states/<sessionId>.json
+```
+
+重启后先恢复状态，再发送真正的 delta。
+
+隔离测试：
+
+```text
+请求 1: 完整 prompt, fresh=true
+请求 2: Assistant A1 + User U2, fresh=false
+请求 3: Assistant A2 + User U3, fresh=false（即使 system 从 S1 变为 S2）
+重启后请求 4: Assistant A3 + User U4, fresh=false
+```
+
+没有重复携带上一轮。
+
+## 工具结果后续对话
+
+工具调用后的下一轮现在只发送：
+
+```text
+Tool:
+工具实际结果
+```
+
+不再重发前面的 User/Assistant 历史；网页对话保持连续，DSH 工具结果作为增量进入网页模型。
