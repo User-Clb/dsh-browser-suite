@@ -825,6 +825,34 @@ window.__ModuleLoader__.load({
     * @param options - reuseOnly 时不会新建 tab。
     
     */
+﻿    /**
+     * 关闭当前 DeepSeek Browser tab（侧边栏模式）。
+     * 优先使用 sidebarRight.close(tabId)；拿不到 tabId 时点击 tab 上的关闭按钮兜底。
+     */
+    async function closeChatTab(ctx) {
+    	const view = getActiveChatView() ?? findChatWebview();
+    	if (!view) throw new Error("当前没有打开的 DeepSeek Browser tab");
+    	const tabElement = view.closest?.("[data-dockkit-tab], [data-sidebar-right-tab]");
+    	let tabId = tabElement?.getAttribute?.("data-dockkit-tab") ?? tabElement?.getAttribute?.("data-sidebar-right-tab") ?? "";
+    	const sidebar = ctx?.get?.("sidebarRight") ?? ctx?.sidebarRight;
+    	if (tabId.length === 0 && sidebar && typeof sidebar.active === "function") {
+    		const active = sidebar.active();
+    		if (active && active.kind === "browser") tabId = active.id;
+    	}
+    	if (tabId.length > 0 && sidebar && typeof sidebar.close === "function") {
+    		sidebar.close(tabId);
+    		activeChatView = void 0;
+    		return { ok: true, tabId, status: debugWebviews() };
+    	}
+    	const closeButton = tabElement?.querySelector?.('button[aria-label*="关闭"], button[aria-label*="Close"], [data-dockkit-tab-close]');
+    	if (closeButton) {
+    		closeButton.click();
+    		activeChatView = void 0;
+    		return { ok: true, tabId: tabId || null, status: debugWebviews() };
+    	}
+    	throw new Error("找不到 Browser tab 的关闭按钮；请直接在侧边栏标签上点关闭");
+    }
+
     async function openChatTab(ctx, url = CHAT_URL, options = {}) {
     	const cached = await resolveActiveView();
     	if (cached) {
@@ -3020,6 +3048,19 @@ window.__ModuleLoader__.load({
 				setBusy(false);
 			}
 		};
+﻿		const closeSidebar = async () => {
+			setBusy(true);
+			try {
+				await deps.closeSidebar();
+				setSidebar(deps.sidebarStatus());
+				setTestNotice("已关闭侧边栏 Browser tab");
+				setError("");
+			} catch (reason) {
+				setError(String(reason?.message ?? reason));
+			} finally {
+				setBusy(false);
+			}
+		};
 		const toggleWeb = async (next) => {
 			const sessionId = deps.getSessionId();
 			if (!sessionId) {
@@ -3117,6 +3158,7 @@ window.__ModuleLoader__.load({
 			h("div", { style: styles.row }, h("span", { style: styles.hint }, "侧边栏模式在右侧 Browser tab 中登录 DeepSeek；不启动独立浏览器，也不读取独立浏览器的路径/User Data 配置。")),
 			h("div", { style: styles.row },
 				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: openSidebar, style: styles.button }, "打开侧边栏"),
+				h("button", { type: "button", disabled: busy || !enabled || !hostReady || !sidebar?.found, onClick: closeSidebar, style: styles.button }, "关闭侧边栏"),
 				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: runBridgeTest, style: styles.button }, "测试网页桥接")
 			)
 		];
@@ -3501,7 +3543,8 @@ window.__ModuleLoader__.load({
     		openSidebar: async () => {
     			await openChatTab(ctx);
     			return debugWebviews();
-    		}
+    		},
+    		closeSidebar: async () => await closeChatTab(ctx)
     	});
     	ctx.effect(() => {
     		try {
