@@ -2946,6 +2946,7 @@ window.__ModuleLoader__.load({
     		const [hostReady, setHostReady] = react.useState(false);
     		const [testNotice, setTestNotice] = react.useState("");
     		const [webActive, setWebActive] = react.useState(false);
+    		const [autoActive, setAutoActive] = react.useState(false);
     		const dialogRef = react.useRef(null);
     		react.useEffect(() => {
     			if (open) {
@@ -2964,6 +2965,7 @@ window.__ModuleLoader__.load({
     				setStatus(await deps.status());
     				setSidebar(deps.sidebarStatus());
     				setWebActive(deps.isWebActive(deps.getSessionId()));
+    				setAutoActive(deps.isAutoSource(deps.getSessionId()));
     				setError(ready ? "" : "Host 端仍是旧版本：请从托盘完全退出 DSH 再重新打开（Ctrl+R 只刷新页面，不够）");
     			} catch (reason) {
     				setHostReady(false);
@@ -3061,33 +3063,34 @@ window.__ModuleLoader__.load({
 				setBusy(false);
 			}
 		};
-		const toggleWeb = async (next) => {
+﻿		const toggleWeb = async (next) => {
 			const sessionId = deps.getSessionId();
 			if (!sessionId) {
-				setError("无法确定当前对话 ID，无法切换网页版对话源");
+				setError("无法确定当前对话 ID，无法切换网页版");
 				return;
 			}
-			setBusy(true);
-			setError("");
-			try {
-				const previousKey = "webds.previousModel." + sessionId;
-				if (next) {
-					const previous = deps.readModelSeat();
-					if (previous && previous.provider !== "web-deepseek") localStorage.setItem(previousKey, JSON.stringify(previous));
-					await deps.selectModel({ sessionId, provider: "web-deepseek", model: "web-deepseek" });
-				} else {
-					let previous;
-					try { previous = JSON.parse(localStorage.getItem(previousKey) || "null"); } catch {}
-					if (!previous || previous.provider === "web-deepseek") previous = { provider: "deepseek-account", model: "deepseek-flash" };
-					await deps.selectModel({ sessionId, provider: previous.provider, model: previous.model });
-				}
-				deps.setSessionWebActive(sessionId, next);
-				setWebActive(next);
-			} catch (reason) {
-				setError(String(reason?.message ?? reason));
-			} finally {
-				setBusy(false);
+			deps.setSessionWebActive(sessionId, next);
+			setWebActive(next);
+			if (!next) {
+				deps.setSessionAutoSource(sessionId, false);
+				setAutoActive(false);
 			}
+			setError("");
+		};
+		const toggleAutoSource = async (next) => {
+			const sessionId = deps.getSessionId();
+			if (!sessionId) {
+				setError("无法确定当前对话 ID，无法切换自动对话源");
+				return;
+			}
+			if (!webActive) {
+				setError("请先启用网页版，再开启自动对话源");
+				setAutoActive(false);
+				return;
+			}
+			deps.setSessionAutoSource(sessionId, next);
+			setAutoActive(next);
+			setError("");
 		};
 		const runBridgeTest = async () => {
 			setBusy(true);
@@ -3181,14 +3184,7 @@ window.__ModuleLoader__.load({
 			style: styles.dialog
 		}, h("div", {
 			style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }
-		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", {
-			style: styles.row
-		}, h("span", { style: styles.label }, "自动对话源（本版未启用）"), h("input", {
-			type: "checkbox",
-			checked: false,
-			disabled: true,
-			onChange: () => {}
-		}), h("span", { style: styles.hint }, "本合并版仅保留手动桥接；自动对话源已停用")), h("div", {
+		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", { style: styles.row }, h("span", { style: styles.label }, "启用网页版"), h("input", { type: "checkbox", checked: webActive, disabled: busy || !hostReady, onChange: (event) => toggleWeb(event.target.checked) }), h("span", { style: styles.hint }, webActive ? "已启用：隐藏模型选择，当前对话使用网页版" : "已关闭：显示模型选择")), h("div", { style: styles.row }, h("span", { style: styles.label }, "自动对话源"), h("input", { type: "checkbox", checked: autoActive, disabled: busy || !hostReady || !webActive, onChange: (event) => toggleAutoSource(event.target.checked) }), h("span", { style: styles.hint }, autoActive ? "已开启：自动对话源（独立开关）" : "独立开关；需先启用网页版")), h("div", { style: styles.row }, h("span", { style: styles.hint }, "测试状态：网页版=" + (webActive ? "开" : "关") + "；自动对话源=" + (autoActive ? "开" : "关") + "；模型选择=" + (webActive ? "隐藏" : "显示"))), h("div", {
 			style: styles.row
 		}, h("span", { style: styles.label }, "运行位置"), h("select", {
 			value: config.mode ?? "sidebar",
@@ -3383,6 +3379,27 @@ window.__ModuleLoader__.load({
     			localStorage.setItem(WEB_ACTIVE_KEY, JSON.stringify([...set]));
     		} catch {}
     	};
+﻿    	const WEB_AUTO_KEY = "webds.autoSourceSessions";
+    	const readAutoSessions = () => {
+    		try {
+    			const parsed = JSON.parse(localStorage.getItem(WEB_AUTO_KEY) || "[]");
+    			return Array.isArray(parsed) ? new Set(parsed.filter((id) => typeof id === "string")) : new Set();
+    		} catch {
+    			return new Set();
+    		}
+    	};
+    	const writeAutoSessions = (set) => {
+    		try {
+    			localStorage.setItem(WEB_AUTO_KEY, JSON.stringify([...set]));
+    		} catch {}
+    	};
+    	const setSessionAutoSource = (sessionId, active) => {
+    		if (sessionId.length === 0) return;
+    		const set = readAutoSessions();
+    		if (active) set.add(sessionId);
+    		else set.delete(sessionId);
+    		writeAutoSessions(set);
+    	};
     	const getCurrentSessionId = () => {
     		return String(document.querySelector('[data-conversation-region="chat"]')?.getAttribute?.("data-conversation-session") ?? "");
     	};
@@ -3531,6 +3548,8 @@ window.__ModuleLoader__.load({
     		selectModel: selectSessionModel,
     		isWebActive: (sessionId) => readActiveSessions().has(sessionId),
     		setSessionWebActive,
+    		isAutoSource: (sessionId) => readAutoSessions().has(sessionId),
+    		setSessionAutoSource,
     		sidebarStatus: () => {
     			const info = debugWebviews();
     			return {
