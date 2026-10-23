@@ -1446,6 +1446,16 @@ window.__ModuleLoader__.load({
     		};
     		const clone = node.cloneNode(true);
     		for (const thinking of Array.from(clone.querySelectorAll("ds-think-content, .ds-think-content"))) thinking.remove();
+    		for (const chrome of Array.from(clone.querySelectorAll('button, [role="button"], [class*="copy"], [class*="download"], [class*="toolbar"], [class*="code-header"], [class*="codeHeader"]'))) chrome.remove();
+    		for (const pre of Array.from(clone.querySelectorAll("pre"))) {
+    			const parent = pre.parentElement;
+    			if (!parent) continue;
+    			for (const child of Array.from(parent.children)) {
+    				if (child === pre || child.contains(pre)) continue;
+    				const label = String(child.innerText || child.textContent || "").trim();
+    				if (child.querySelector("button") || /^(text|plaintext|代码块|复制|下载|copy|download|code)/iu.test(label)) child.remove();
+    			}
+    		}
     		const codeBlocks = [];
     		for (const pre of Array.from(clone.querySelectorAll("pre"))) {
     			const codeElement = pre.querySelector("code") || pre;
