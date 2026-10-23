@@ -2845,7 +2845,7 @@ window.__ModuleLoader__.load({
     * 运行 apply；拿不到服务时插件不会静默半启动。
     
     */
-    const inject = ["slots", "sessions"];
+    const inject = ["slots", "sessions", "remote", "remote.session"];
     /**
     
     * Plugin apply function
@@ -3066,14 +3066,14 @@ window.__ModuleLoader__.load({
 		const autoPreviousKey = (sessionId) => "webds.autoPreviousModel." + sessionId;
 		const rememberApiModel = (sessionId) => {
 			const seat = deps.readModelSeat();
-			if (seat && seat.provider !== "web-deepseek") {
+			if (seat && seat.provider !== "web-local") {
 				try { localStorage.setItem(autoPreviousKey(sessionId), JSON.stringify(seat)); } catch {}
 			}
 		};
 		const restoreApiModel = async (sessionId) => {
 			let previous;
 			try { previous = JSON.parse(localStorage.getItem(autoPreviousKey(sessionId)) || "null"); } catch {}
-			if (!previous || previous.provider === "web-deepseek") previous = { provider: "deepseek-account", model: "deepseek-flash" };
+			if (!previous || previous.provider === "web-local") previous = { provider: "deepseek-account", model: "deepseek-flash" };
 			await deps.selectModel({ sessionId, provider: previous.provider, model: previous.model });
 		};
 		const toggleWeb = async (next) => {
@@ -3114,7 +3114,7 @@ window.__ModuleLoader__.load({
 			try {
 				if (next) {
 					rememberApiModel(sessionId);
-					await deps.selectModel({ sessionId, provider: "web-deepseek", model: "web-deepseek" });
+					await deps.selectModel({ sessionId, provider: "web-local", model: "web-deepseek" });
 				} else {
 					await restoreApiModel(sessionId);
 				}
