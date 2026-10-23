@@ -1,0 +1,53 @@
+{
+  "name": "dsh-browser-suite",
+  "version": "0.1.0",
+  "description": "DSH browser suite: local Edge/Chrome search + fetch, in-composer local/API switch, and a DOM-automated web DeepSeek bridge.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/User-Clb/dsh-browser-suite.git"
+  },
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.cjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.cjs",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "browser",
+    "web-search",
+    "deepseek-web",
+    "dom-automation"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

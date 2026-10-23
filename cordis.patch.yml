@@ -1,0 +1,10 @@
+# dsh-browser-suite 的组合包 patch 层。
+#
+# 单包同时提供 Host 与 Client 两端：
+#   - dsh-browser-suite        Host 半区（index.js，组合控制与网页版桥接）
+#   - dsh-browser-suite-client Client 半区（client.cjs，组合两份输入框 UI）
+- insert:
+    - id: dsh-browser-suite
+      name: dsh-browser-suite
+    - id: dsh-browser-suite-client
+      name: dsh-browser-suite
