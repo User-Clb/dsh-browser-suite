@@ -2974,6 +2974,13 @@ window.__ModuleLoader__.load({
     					deps.setSessionWebActive(sessionId, true);
     					deps.setSessionAutoSource(sessionId, true);
     				}
+    				if (info?.browser?.mode !== 'standalone') {
+    					deps.setSessionAutoSource(sessionId, false);
+    					setAutoActive(false);
+    					if (modelIsWeb) {
+    						try { await deps.selectModel({ sessionId, provider: 'deepseek-account', model: 'deepseek-flash' }); } catch {}
+    					}
+    				}
     				setError(ready ? "" : "Host 端仍是旧版本：请从托盘完全退出 DSH 再重新打开（Ctrl+R 只刷新页面，不够）");
     			} catch (reason) {
     				setHostReady(false);
@@ -3134,6 +3141,24 @@ window.__ModuleLoader__.load({
 				setBusy(false);
 			}
 		};
+		const logoutSidebar = async () => {
+			setBusy(true);
+			setTestNotice("正在退出侧边栏登录…");
+			try {
+				const view = findChatWebview();
+				if (!view) {
+					setTestNotice("未找到侧边栏 DeepSeek 页面，请先打开侧边栏");
+					return;
+				}
+				await view.executeJavaScript("try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} location.href = 'https://chat.deepseek.com/sign_out';");
+				await new Promise((resolve) => setTimeout(resolve, 2500));
+				setTestNotice("已退出登录并清理本地存储；请重新登录");
+			} catch (reason) {
+				setTestNotice("退出登录失败：" + String(reason?.message ?? reason));
+			} finally {
+				setBusy(false);
+			}
+		};
 		const runBridgeTest = async () => {
 			setBusy(true);
 			setTestNotice("测试中：正在通过网页版发送测试消息…");
@@ -3195,7 +3220,8 @@ window.__ModuleLoader__.load({
 			h("div", { style: styles.row },
 				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: openStandalone, style: styles.button }, "打开独立浏览器"),
 				h("button", { type: "button", disabled: busy, onClick: closeStandalone, style: styles.button }, "关闭浏览器"),
-				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: runBridgeTest, style: styles.button }, "测试网页桥接")
+				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: runBridgeTest, style: styles.button }, "测试网页桥接"),
+				h("button", { type: "button", disabled: busy || !hostReady, onClick: logoutSidebar, style: styles.button }, "退出登录")
 			)
 		];
 		const sidebarRows = [
@@ -3204,9 +3230,10 @@ window.__ModuleLoader__.load({
 			h("div", { style: styles.row },
 				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: openSidebar, style: styles.button }, "打开侧边栏"),
 				h("button", { type: "button", disabled: busy || !enabled || !hostReady || !sidebar?.found, onClick: closeSidebar, style: styles.button }, "关闭侧边栏"),
-				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: runBridgeTest, style: styles.button }, "测试网页桥接")
+				h("button", { type: "button", disabled: busy || !enabled || !hostReady, onClick: runBridgeTest, style: styles.button }, "测试网页桥接"),
+				h("button", { type: "button", disabled: busy || !hostReady, onClick: logoutSidebar, style: styles.button }, "退出登录")
 			)
-		];
+				];
 		return h(react.Fragment, null, h("button", {
 			type: "button",
 			title: "网页版桥接设置",
