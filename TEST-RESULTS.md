@@ -591,3 +591,41 @@ delta "Assistant:\nA1\n\nUser:\nU2"
 ```
 
 delta 中不再带 browser_search/browser_fetch 等工具清单。
+
+## session-9785 复盘
+
+该会话证明工具链路是通的：
+
+- ask_user_question 执行成功；
+- DSML browser_fetch 被解析并执行两次；
+- pwsh 被解析并执行，返回时区和公网 IP；
+- 所有 Tool 结果都回到会话。
+
+真正的问题是：
+
+1. 用户回答“自己解决”后，模型选择 IP 定位，而不是 browser_search 天气；
+2. 最后一步模型输出空的：
+
+```text
+tool_call
+
+```
+```
+
+本地解析器没有可解析 JSON，turn 直接结束。
+
+### 新修复
+
+- prompt 明确：用户不提供地点时，必须用 browser_search 原始天气问题，不得用 IP；
+- 检测空的 tool_call 脚手架；
+- 自动发送一次纠正消息要求模型重发合法 tool_call 或最终回答；
+- 仍为空时不返回空白工具块。
+
+隔离测试：
+
+```text
+第一次: 空的 tool_call 代码块
+自动重试
+第二次: browser_search {"query":"今天广州天气"}
+DSH 收到真实 tool_calls
+```
