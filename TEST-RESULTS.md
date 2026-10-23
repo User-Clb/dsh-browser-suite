@@ -1,62 +1,139 @@
-# 自动对话源隔离测试
+# 隔离副本测试结果
 
-分支：`feat/auto-source`
-Worktree：`G:\laboratory\dsh-browser-suite-auto-test`
-Profile：`~/.dsh/profiles/webds-auto-test`
+副本：`G:\laboratory\dsh-browser-suite-next`
+隔离 DSH home：`C:\Users\Revision-Extra\.dsh-next`
+隔离 profile：`~/.dsh/profiles/webds-next`
+本地端点：`http://127.0.0.1:34568/v1`
 
-## 实现方式
+## 已真实验证
 
-- 本地 OpenAI 兼容端点：`http://127.0.0.1:34567/v1`
-- pi-ai provider：`web-local`
-- 模型：`web-local/web-deepseek`
-- 浏览器池：`lib/webds/web-pool.js`
-- 每个 DSH 对话/子会话使用独立网页会话；会话键由历史首条消息派生
-- 网页版生成按账号串行，避免两个页面同时生成导致互踢/超时
-- 支持普通文本、tool calls、多轮
-- 上下文自统计上限默认 1,000,000 tokens；超过后压缩并新开网页对话
+### 1. 网页对话 URL 持久映射
 
-## 已验证
+浏览器 profile 复制后真实登录 DeepSeek，直接调用 web pool：
 
-| 项目 | 结果 |
-|---|---|
-| Host 启动 | 通过 |
-| 模型注册 / 模型选择器显示 Web DeepSeek | 通过 |
-| 单轮文本 | 通过（AUTO-SOURCE-OK） |
-| 多轮 | 通过（MULTI-TURN-OK） |
-| 独立网页会话记忆 | 通过（Alice -> 后续回答 Alice） |
-| 会话隔离 | 通过（主请求与标题请求产生不同 context id） |
-| tool call | 通过（读取 package.json -> dsh-browser-suite） |
-| 两个并发请求 | 通过（排队串行执行，均返回） |
-| 网页版开关隐藏模型选择 | 通过（模型触发按钮 display:none） |
-| 关闭网页版恢复 API 模型 | 通过（恢复 glm-5.3-flash） |
-| 侧边栏关闭按钮 | 通过（UI 渲染） |
-| 自动对话源开关独立 | 通过（状态、模型选择互不混用） |
-| 上下文压缩触发 | 通过（低阈值测试 x-webds-compacted=1，新开对话） |
-| 主/子会话配合 | 子会话成功创建并独立运行；主模型对子任务指令的服从性需继续调 prompt |
+```text
+session-map-e2e
+  https://chat.deepseek.com/a/chat/s/33db3943-e81a-4b57-94ff-01232cc1b442
+```
 
-## 已验证的客户端命令
+第二轮：
 
-主 DSH 的测试 profile 通过 127.0.0.1 的 DSH Web UI 实际输入并观察回复，不是仅脚本模拟。
+```text
+same-url true
+```
+
+关闭 pool、重新创建后再请求：
+
+```text
+WEB-MAP-RESTORED
+```
+
+映射文件保持同一个 URL，没有新建对话。
+
+不同 session：
+
+```text
+session-map-e2e-2
+  https://chat.deepseek.com/a/chat/s/aa7f64a7-411b-49f7-9a8c-7ace5831e7e5
+
+distinct-urls true
+```
+
+### 2. 真实 DSH 请求头
+
+从隔离 DSH 向本地端点发出真实请求后，请求头为：
+
+```text
+host
+connection
+accept
+x-stainless-*
+authorization
+user-agent: deepseek-harness/0.2.1-rc.2
+content-type
+accept-language
+sec-fetch-mode
+accept-encoding
+content-length
+```
+
+**没有 x-session-id / x-dsh-session。**
+
+所以 DSH 当前不会把真实 sessionId 传给 OpenAI 兼容端点；插件只能使用历史派生 key，或在 DSH/pi-ai 侧增加 header。
+
+### 3. 真实网页版工具调用
+
+隔离 DSH 选中 `Web DeepSeek` 后执行：
+
+```text
+请真实调用 pwsh 工具：创建 G:\laboratory\iso-tool-deliver，
+写入 hello.txt 内容 ISO-TOOL-OK，然后读取并回复。
+```
+
+结果：
+
+```text
+1 轮 3 步
+已完成
+文件内容确认为 ISO-TOOL-OK
+```
+
+文件：
+
+```text
+G:\laboratory\iso-tool-deliver\hello.txt
+```
+
+### 4. 网页版小项目
+
+隔离 DSH 网页版模型创建：
+
+```text
+G:\laboratory\iso-project-web\hello.py
+G:\laboratory\iso-project-web\README.md
+```
+
+运行输出：
+
+```text
+ISO-WEB-OK
+```
+
+### 5. 标题请求隔离
+
+标题生成请求不再占用网页对话，不再创建额外 DeepSeek 会话。
+
+### 6. 侧边栏桥接队列
+
+Host 本地端点处于 sidebar 模式时，请求进入队列：
+
+```json
+{
+  "id": "sidebar-1-...",
+  "prompt": "...",
+  "fresh": false,
+  "sessionId": "web-..."
+}
+```
+
+客户端回传结果后，本地端点返回：
+
+```text
+SIDEBAR-BRIDGE-OK
+```
+
+说明 Host↔客户端轮询桥接已通，真实桌面侧边栏还需 UI 端到端验证。
 
 ## 已知限制
 
-- 网页版实际生成按账号串行；`maxConcurrency` 保留为排队/工作页上限。
-- 要真正并行 3 路，需要多个已登录账号/profile，当前未实现。
-- 工具调用依赖网页版按约定输出 tool_call 代码块，网页版改版时需回归。
-- 测试 profile 使用 `WEBDS_LOCAL_API_KEY` 环境变量启动。
-- 主 profile 尚未合并本分支。
+- DSH 不发送真实 sessionId；当前映射 key 由首条系统消息与首条用户消息派生，相同开场白可能碰撞。
+- 侧边栏登录持久化由 DSH sidebar browser 的 Electron partition 决定；插件只能提供退出登录，不能改 partition。
+- 单账号网页生成仍然串行；`maxConcurrency` 是排队上限，不是真实并发生成。
+- 网页版工具调用依赖网页版输出 tool_call 代码块；已验证一次完整项目，但仍需多次回归。
+- 当前 DSH 主客户端未加载本副本。
 
-## 启动命令
+## 下一步
 
-```powershell
-$env:WEBDS_LOCAL_API_KEY='webds-local'
-$env:DSH_WEBDS_MAX_CONCURRENCY='3'
-$env:DSH_WEBDS_CONTEXT_TOKENS='1000000'
-dsh --profile webds-auto-test --no-open --port 0
-```
-
-## 合并前检查
-
-- 不直接改主 profile。
-- 主 profile 继续使用手动桥接。
-- 合并回主线前重新跑一遍单轮、多轮、tool call、并发 2/3、上下文压缩。
+- 用隔离 profile 在真实桌面验证侧边栏桥接、退出登录、多标签页。
+- 若 DSH 侧增加 sessionId header，可切换到真实 sessionId 映射。
+- 主 profile 合并前再跑一次小项目验收。

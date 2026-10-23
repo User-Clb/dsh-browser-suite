@@ -664,8 +664,13 @@ window.__ModuleLoader__.load({
     const WEBVIEW_SELECTOR = "webview[data-sidebar-browser-frame]";
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     /** 当前页面里所有侧栏浏览器 webview。 */
+    function sidebarSessionRoot() {
+    	const roots = Array.from(document.querySelectorAll("[data-sidebar-right-session]"));
+    	return roots.find((element) => element.hasAttribute("data-sidebar-right-open")) ?? roots[0];
+    }
     function webviews() {
-    	return Array.from(document.querySelectorAll(WEBVIEW_SELECTOR));
+    	const root = sidebarSessionRoot();
+    	return Array.from((root ?? document).querySelectorAll(WEBVIEW_SELECTOR));
     }
     /** 读取 webview 的当前 URL，尚未 attach 时返回空串。 */
     function safeUrl(view) {
@@ -692,13 +697,16 @@ window.__ModuleLoader__.load({
     * 侧栏切后台、折叠或重排时 getURL()/DOM 查询可能短暂失效，靠它兜底复用。
     
     */
-    let activeChatView;
+    const activeChatViews = new Map();
+    function currentSessionKey(view) {
+    	return activeSessionId(view) || "";
+    }
     function rememberChatView(view) {
-    	activeChatView = view;
+    	activeChatViews.set(currentSessionKey(view), view);
     	return view;
     }
     function getActiveChatView() {
-    	return activeChatView;
+    	return activeChatViews.get(currentSessionKey()) ?? activeChatViews.get("");
     }
     /**
     
@@ -708,7 +716,7 @@ window.__ModuleLoader__.load({
     
     */
     function activeSessionId(view) {
-    	const target = view ?? activeChatView;
+    	const target = view;
     	try {
     		const owner = target?.closest?.("[data-sidebar-right-session]");
     		const id = owner?.getAttribute?.("data-sidebar-right-session");
@@ -767,7 +775,7 @@ window.__ModuleLoader__.load({
     /** 诊断用：当前活动引用 + DOM 里所有 webview。 */
     function debugWebviews() {
     	return {
-    		active: activeChatView ? describeView(activeChatView) : null,
+    		active: getActiveChatView() ? describeView(getActiveChatView()) : null,
     		sessionId: activeSessionId(),
     		views: webviews().map(describeView)
     	};
@@ -779,7 +787,7 @@ window.__ModuleLoader__.load({
     	if (visibleChat) return rememberChatView(visibleChat);
     	const anyChat = views.find((view) => isChatUrl(safeUrl(view)));
     	if (anyChat) return rememberChatView(anyChat);
-    	const lease = leaseOf(activeChatView);
+    	const lease = leaseOf(getActiveChatView());
     	if (lease !== "") {
     		const byLease = views.find((view) => leaseOf(view) === lease);
     		if (byLease) return rememberChatView(byLease);
@@ -804,7 +812,7 @@ window.__ModuleLoader__.load({
     
     */
     async function resolveActiveView() {
-    	const view = activeChatView;
+    	const view = getActiveChatView();
     	if (!view) return void 0;
     	if (isViewVisible(view)) return view;
     	return void 0;
@@ -841,13 +849,13 @@ window.__ModuleLoader__.load({
     	}
     	if (tabId.length > 0 && sidebar && typeof sidebar.close === "function") {
     		sidebar.close(tabId);
-    		activeChatView = void 0;
+    		activeChatViews.delete(currentSessionKey());
     		return { ok: true, tabId, status: debugWebviews() };
     	}
     	const closeButton = tabElement?.querySelector?.('button[aria-label*="关闭"], button[aria-label*="Close"], [data-dockkit-tab-close]');
     	if (closeButton) {
     		closeButton.click();
-    		activeChatView = void 0;
+    		activeChatViews.delete(currentSessionKey());
     		return { ok: true, tabId: tabId || null, status: debugWebviews() };
     	}
     	throw new Error("找不到 Browser tab 的关闭按钮；请直接在侧边栏标签上点关闭");
@@ -2974,13 +2982,6 @@ window.__ModuleLoader__.load({
     					deps.setSessionWebActive(sessionId, true);
     					deps.setSessionAutoSource(sessionId, true);
     				}
-    				if (info?.browser?.mode !== 'standalone') {
-    					deps.setSessionAutoSource(sessionId, false);
-    					setAutoActive(false);
-    					if (modelIsWeb) {
-    						try { await deps.selectModel({ sessionId, provider: 'deepseek-account', model: 'deepseek-flash' }); } catch {}
-    					}
-    				}
     				setError(ready ? "" : "Host 端仍是旧版本：请从托盘完全退出 DSH 再重新打开（Ctrl+R 只刷新页面，不够）");
     			} catch (reason) {
     				setHostReady(false);
@@ -3253,7 +3254,7 @@ window.__ModuleLoader__.load({
 			style: styles.dialog
 		}, h("div", {
 			style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }
-		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", { style: styles.row }, h("span", { style: styles.label }, "启用网页版"), h("input", { type: "checkbox", checked: webActive, disabled: busy || !hostReady, onChange: (event) => toggleWeb(event.target.checked) }), h("span", { style: styles.hint }, webActive ? "已启用：隐藏模型选择，当前对话使用网页版" : "已关闭：显示模型选择")), h("div", { style: styles.row }, h("span", { style: styles.label }, "自动对话源"), h("input", { type: "checkbox", checked: autoActive, disabled: busy || !hostReady || !webActive || config.mode !== "standalone", onChange: (event) => toggleAutoSource(event.target.checked) }), h("span", { style: styles.hint }, autoActive ? "已开启：自动对话源（独立浏览器）" : config.mode === "standalone" ? "独立开关；需先启用网页版" : "侧边栏模式仅支持手动桥接；自动对话源需切到独立浏览器")), h("div", { style: styles.row }, h("span", { style: styles.hint }, "测试状态：网页版=" + (webActive ? "开" : "关") + "；自动对话源=" + (autoActive ? "开" : "关") + "；模型选择=" + (webActive ? "隐藏" : "显示"))), h("div", {
+		}, h("strong", null, "网页版桥接设置"), h("button", { type: "button", onClick: closeDialog, style: styles.button }, "关闭")), h("div", { style: styles.row }, h("span", { style: styles.label }, "启用网页版"), h("input", { type: "checkbox", checked: webActive, disabled: busy || !hostReady, onChange: (event) => toggleWeb(event.target.checked) }), h("span", { style: styles.hint }, webActive ? "已启用：隐藏模型选择，当前对话使用网页版" : "已关闭：显示模型选择")), h("div", { style: styles.row }, h("span", { style: styles.label }, "自动对话源"), h("input", { type: "checkbox", checked: autoActive, disabled: busy || !hostReady || !webActive, onChange: (event) => toggleAutoSource(event.target.checked) }), h("span", { style: styles.hint }, autoActive ? "已开启：自动对话源" : "独立开关；需先启用网页版")), h("div", { style: styles.row }, h("span", { style: styles.hint }, "测试状态：网页版=" + (webActive ? "开" : "关") + "；自动对话源=" + (autoActive ? "开" : "关") + "；模型选择=" + (webActive ? "隐藏" : "显示"))), h("div", {
 			style: styles.row
 		}, h("span", { style: styles.label }, "运行位置"), h("select", {
 			value: config.mode ?? "sidebar",
@@ -3518,7 +3519,7 @@ window.__ModuleLoader__.load({
     	};
     	const styleElement = document.createElement("style");
     	styleElement.id = "webds-web-source-css";
-    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}.webds-web-active button[aria-haspopup='menu']:has([data-provider-id][data-model-id]){display:none!important}[data-provider-id='web-local']{display:none!important}";
+    	styleElement.textContent = ".webds-web-active [data-provider-id][data-model-id]{display:none!important}.webds-web-active button[aria-haspopup='menu']:has([data-provider-id][data-model-id]){display:none!important}";
     	if (!document.getElementById(styleElement.id)) document.head.append(styleElement);
     	syncWebClasses();
     	let syncTimer;
@@ -3651,6 +3652,25 @@ window.__ModuleLoader__.load({
     		}
     	}, "webds-bridge: composer config");
     	console.log("[webds] conversation.input.right 配置按钮已注册");
+    	ctx.effect(() => {
+    		let busy = false;
+    		const timer = setInterval(async () => {
+    			if (busy) return;
+    			busy = true;
+    			try {
+    				const job = await callWebdsRpc(ctx, "sidebarPoll", {}, 15000);
+    				if (job && typeof job.id === "string") {
+    					const result = await runDomTest(ctx, job.prompt);
+    					await callWebdsRpc(ctx, "sidebarComplete", { id: job.id, result }, 15000);
+    				}
+    			} catch (error) {
+    				console.warn("[webds] sidebar poll failed:", String(error?.message ?? error));
+    			} finally {
+    				busy = false;
+    			}
+    		}, 1000);
+    		return () => clearInterval(timer);
+    	}, "webds sidebar auto-source poller");
     }
     
     //#endregion
