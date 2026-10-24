@@ -854,3 +854,27 @@ state webUrl 更新为新 URL
 ```
 
 DSH 完整 messages 始终保留，摘要只影响发送给网页版的上下文。
+
+## 本地浏览器等待页面加载
+
+修复本地搜索/抓取过早关闭的问题。
+
+### browser_search
+
+- 页面 `document.readyState=complete` 后继续等待；
+- 反复提取搜索结果；
+- 结果数量和签名稳定后才继续；
+- Bing/百度/搜狗/DDG/Google 均适用；
+- 无结果时也会等待稳定期，避免 JS 后加载被漏掉。
+
+### browser_fetch
+
+- `document.readyState=complete` 后等待正文稳定；
+- 正文长度达到 minText 且 800ms 无变化才返回。
+
+隔离实测：
+
+```text
+browser_search: 10 个 Bing 结果
+browser_fetch weather.com.cn: 正常读取广州天气页
+```
