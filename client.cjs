@@ -3685,21 +3685,7 @@ window.__ModuleLoader__.load({
     		label: () => "DSH 网页版桥接"
     	}, SettingsPanel)), "webds-bridge: settings page");
     	console.log("[webds] settings.section 面板已注册");
-    	const HeaderToolbar = createHeaderToolbar(panelDeps);
-    	ctx.effect(() => {
-    		try {
-    			return ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
-    				name: "conversation.session.header.utilities",
-    				id: "webds-bridge-toolbar",
-    				order: 10,
-    				label: () => "网页版桥接快捷操作"
-    			}, HeaderToolbar));
-    		} catch (error) {
-    			console.warn("[webds] conversation.session.header.utilities 槽位不可用，快捷操作栏将不显示：", error);
-    			return;
-    		}
-    	}, "webds-bridge: header toolbar");
-    	console.log("[webds] conversation.session.header.utilities 快捷操作栏已注册");
+    // Manual bridge toolbar removed: the automatic web source performs save / execute / continue itself.
     	const ComposerConfig = createComposerConfig({
     		getInfo: async () => await callWebdsRpc(ctx, "info"),
     		setBrowser: async (patch) => await setBrowserConfigRpc(ctx, patch),
