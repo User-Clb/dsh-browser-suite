@@ -913,3 +913,28 @@ browser_fetch weather.com.cn: 正常读取广州天气页
 ```
 
 「网页版」和「本地搜索」在同一 slot 内相邻显示。
+
+## 修正：网页版按钮消失
+
+把「网页版」从 `conversation.input.right` 移到 `conversation.input.activity` 后按钮消失。
+
+原因：
+
+- `conversation.input.activity` 已被「本地搜索」占用；
+- 「网页版」二次注入 activity 槽未渲染，被占用/覆盖。
+
+修正：
+
+- 「网页版」回到 `conversation.input.right`；
+- order 从 20 改为 39；
+- 「本地搜索」仍在 `conversation.input.activity`，order=40。
+
+期望顺序：
+
+```text
+模型选择 → 网页版(right 39) → 本地搜索(activity 40)
+```
+
+这样「网页版」按钮恢复显示，并尽量靠近「本地搜索」。
+
+若 DSH 仍把内置模型选择渲染在二者之间，下一步可尝试把「本地搜索」也注册到 `conversation.input.right`，order=40，使两者在同一 slot 相邻。

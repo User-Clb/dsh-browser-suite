@@ -3719,8 +3719,8 @@ window.__ModuleLoader__.load({
     	});
     	ctx.effect(() => {
     		try {
-    			return ctx.slots.inject("conversation.input.activity", () => ctx.slots.register({
-    			name: "conversation.input.activity",
+    			return ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
+    			name: "conversation.input.right",
     			id: "webds-bridge-config",
     			order: 39,
     				label: () => "网页版桥接设置"
