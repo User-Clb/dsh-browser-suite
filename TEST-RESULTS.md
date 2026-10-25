@@ -878,3 +878,38 @@ DSH 完整 messages 始终保留，摘要只影响发送给网页版的上下文
 browser_search: 10 个 Bing 结果
 browser_fetch weather.com.cn: 正常读取广州天气页
 ```
+
+## UI 清理与按钮相邻
+
+### 移除手动桥接按钮
+
+- 删除会话标题栏 `conversation.session.header.utilities` 快捷操作：
+  - 存记忆
+  - 执行注入
+  - 续接
+- 删除设置页“操作”区里的手动按钮：
+  - 保存记忆
+  - 执行注入
+  - 强制自动续接
+- 保留“打开网页版”和状态/配置区。
+
+自动对话源会自动完成 save / execute / continue，不再需要手动按钮。
+
+### 「网页版」与「本地搜索」相邻
+
+`本地搜索` 注册在 `conversation.input.activity`，order=40。
+
+原来「网页版」在 `conversation.input.right`，order=20，被模型选择组件隔开。
+
+现在「网页版」改为：
+
+- slot: `conversation.input.activity`
+- order: 39
+
+这样顺序为：
+
+```text
+模型选择 → 网页版(order 39) → 本地搜索(order 40)
+```
+
+「网页版」和「本地搜索」在同一 slot 内相邻显示。

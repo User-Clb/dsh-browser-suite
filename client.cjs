@@ -2437,7 +2437,7 @@ window.__ModuleLoader__.load({
     		} }, button("open", "打开网页版", async () => {
     			await deps.openChat();
     			return { ok: true };
-    		}), button("save", "保存记忆", () => deps.saveMemory()), button("execute", "执行注入", () => deps.execute()), button("auto", "强制自动续接", () => deps.autoContinue())), notice === null ? null : h$1("div", { style: {
+    		}), ), notice === null ? null : h$1("div", { style: {
     			marginTop: "10px",
     			fontSize: "12px",
     			lineHeight: 1.6,
@@ -3719,10 +3719,10 @@ window.__ModuleLoader__.load({
     	});
     	ctx.effect(() => {
     		try {
-    			return ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
-    				name: "conversation.input.right",
-    				id: "webds-bridge-config",
-    				order: 20,
+    			return ctx.slots.inject("conversation.input.activity", () => ctx.slots.register({
+    			name: "conversation.input.activity",
+    			id: "webds-bridge-config",
+    			order: 39,
     				label: () => "网页版桥接设置"
     			}, ComposerConfig));
     		} catch (error) {
