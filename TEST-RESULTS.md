@@ -938,3 +938,22 @@ browser_fetch weather.com.cn: 正常读取广州天气页
 这样「网页版」按钮恢复显示，并尽量靠近「本地搜索」。
 
 若 DSH 仍把内置模型选择渲染在二者之间，下一步可尝试把「本地搜索」也注册到 `conversation.input.right`，order=40，使两者在同一 slot 相邻。
+
+### 修正：两者放到同一 list 槽
+
+`conversation.input.activity` 是 `single`，只能容纳一个控件，所以第二个注入不渲染。
+
+现在两个按钮都注册到 `conversation.input.right`（list）：
+
+- 网页版：`id: webds-bridge-config`，order=40
+- 本地搜索：`id: local-web-control`，order=41
+
+期望顺序：
+
+```text
+right: 网页版(order 40) → 本地搜索(order 41) → conversation.input.model
+```
+
+两边在同一 flex/list 槽中相邻，中间不再夹模型选择。
+
+注意：`conversation.input.right` 没有 `onActiveChange`，所以本地搜索面板改用 `position: fixed` 浮层（打开时按触发按钮位置计算 right/bottom），带点击外部 / Esc 自动收起，不会把输入框撑开。

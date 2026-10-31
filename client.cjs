@@ -40,6 +40,7 @@ window.__ModuleLoader__.load({
 
     const styles = {
       root: {
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: "8px",
@@ -74,6 +75,14 @@ window.__ModuleLoader__.load({
         boxShadow: "0 0 0 2px rgba(34,197,94,.18)",
       },
       panel: {
+        position: "fixed",
+        right: "16px",
+        bottom: "64px",
+        zIndex: 1000,
+        width: "max-content",
+        maxWidth: "min(720px, 80vw)",
+        maxHeight: "calc(100vh - 120px)",
+        overflow: "auto",
         display: "flex",
         alignItems: "center",
         flexWrap: "wrap",
@@ -175,6 +184,8 @@ window.__ModuleLoader__.load({
       const saveTimer = React.useRef(null);
       const savedTimer = React.useRef(null);
       const requestSeq = React.useRef(0);
+      const rootRef = React.useRef(null);
+      const [panelPos, setPanelPos] = React.useState(null);
 
       React.useEffect(() => {
         let alive = true;
@@ -199,7 +210,16 @@ window.__ModuleLoader__.load({
       }
 
       function setActive(next) {
-        if (next) refresh();
+        if (next) {
+          refresh();
+          const rect = rootRef.current?.getBoundingClientRect?.();
+          if (rect) {
+            setPanelPos({
+              right: Math.max(8, Math.round((typeof window === "object" ? window.innerWidth : rect.right) - rect.right)),
+              bottom: Math.max(8, Math.round((typeof window === "object" ? window.innerHeight : rect.bottom) - rect.top + 6)),
+            });
+          }
+        }
         setOpen(next);
         if (activeRef.current !== next) {
           activeRef.current = next;
@@ -218,6 +238,22 @@ window.__ModuleLoader__.load({
         if (saveTimer.current) clearTimeout(saveTimer.current);
         if (savedTimer.current) clearTimeout(savedTimer.current);
       }, []);
+
+      React.useEffect(() => {
+        if (!open) return undefined;
+        const onPointerDown = (event) => {
+          if (rootRef.current && !rootRef.current.contains(event.target)) setActive(false);
+        };
+        const onKeyDown = (event) => {
+          if (event.key === "Escape") setActive(false);
+        };
+        document.addEventListener("mousedown", onPointerDown, true);
+        document.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("mousedown", onPointerDown, true);
+          document.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, [open]);
 
       function markSaved() {
         setSaved("已自动保存");
@@ -284,7 +320,7 @@ window.__ModuleLoader__.load({
 
       return h(
         "div",
-        { style: styles.root },
+        { style: styles.root, ref: rootRef },
         h(
           "button",
           {
@@ -301,7 +337,7 @@ window.__ModuleLoader__.load({
         open
           ? h(
               "div",
-              { style: styles.panel },
+              { style: { ...styles.panel, ...(panelPos ?? {}) } },
               Row(
                 "使用本地浏览器",
                 h("input", {
@@ -456,12 +492,12 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(() => {
         try {
-          return ctx.slots.inject("conversation.input.activity", () =>
+          return ctx.slots.inject("conversation.input.right", () =>
             ctx.slots.register(
               {
-                name: "conversation.input.activity",
+                name: "conversation.input.right",
                 id: "local-web-control",
-                order: 40,
+                order: 41,
                 label: () => "本地搜索",
               },
               (props) => h(Boundary, null, h(Control, { ...props, ctx })),
@@ -3719,10 +3755,10 @@ window.__ModuleLoader__.load({
     	});
     	ctx.effect(() => {
     		try {
-    			return ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
+    		return ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
     			name: "conversation.input.right",
     			id: "webds-bridge-config",
-    			order: 39,
+    			order: 40,
     				label: () => "网页版桥接设置"
     			}, ComposerConfig));
     		} catch (error) {
