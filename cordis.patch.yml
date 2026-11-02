@@ -1,10 +1,13 @@
 # dsh-browser-suite 的组合包 patch 层。
 #
-# 单包同时提供 Host 与 Client 两端：
-#   - dsh-browser-suite        Host 半区（index.js，组合控制与网页版桥接）
-#   - dsh-browser-suite-client Client 半区（client.cjs，组合两份输入框 UI）
+# 只插入 **一行**（裸包名）：Host 半区由 index.js 提供；Client 半区由
+# dsh-client-modules 依据 package.json 的 `dsh.client` 声明自动发现，
+# 并把 exports["./client"]（client.cjs）挂到这一行上。
+#
+# ⚠️ 不要再插入第二行 `dsh-browser-suite-client`：
+# 第二行的 name 也是裸包名，loader 会把它当成同一个包再实例化一次 Host，
+# 于是 index.js 的 apply 跑两遍 → prompt section "tool:browser_search"
+# 重复注册 → 该行报 "did not activate"。
 - insert:
     - id: dsh-browser-suite
-      name: dsh-browser-suite
-    - id: dsh-browser-suite-client
       name: dsh-browser-suite
